@@ -1024,6 +1024,66 @@
     font-size: 10px;
     color: var(--ink-2);
   }
+
+  /* ---------- Mobile (≤640px) ---------- */
+  @media (max-width: 640px) {
+    :root {
+      --header-h: 52px;
+      --controls-h: auto;
+      --row-h: 60px;
+      --col-w: 84px;
+      --col-w-rank: 92px;
+      --year-w: 48px;
+    }
+
+    .topbar { padding: 0 12px; gap: 12px; }
+    .topbar-stats { display: none; }
+    .brand-sub { display: none; }
+    .brand-title { font-size: 14px; }
+
+    .controls {
+      height: auto;
+      flex-wrap: wrap;
+      padding: 8px 10px;
+      gap: 8px;
+    }
+    .filter-group {
+      border-left: 0;
+      padding-left: 0;
+      height: auto;
+      flex-wrap: wrap;
+    }
+    .filter-label { display: none; }
+    .search { flex: 1 1 100%; max-width: none; }
+    .dual-range { width: 140px; }
+    .range-readout { min-width: 80px; font-size: 11px; }
+
+    .country-panel { width: calc(100vw - 20px); left: 0; }
+
+    .cell { padding: 4px 5px; gap: 1px; }
+    .cell-title { font-size: 10px; line-height: 1.2; }
+    .cell-artist { font-size: 9px; }
+    .cell-place { font-size: 9px; }
+    .cell-flag { font-size: 11px; }
+
+    .col-head { padding: 6px 2px 4px; gap: 2px; }
+    .col-head .flag { font-size: 16px; }
+    .col-head .name { display: none; }
+    .col-head .code { font-size: 9px; }
+    .col-head .rank-label { font-size: 12px; }
+
+    .row-head { padding: 0 6px; font-size: 11px; }
+
+    .modal-backdrop { padding: 0; }
+    .modal { border-radius: 0; height: 100%; width: 100%; }
+    .modal-header { padding: 12px 14px 10px; gap: 10px; }
+    .modal-flag { font-size: 28px; }
+    .modal-title { font-size: 18px; }
+
+    .legend { padding: 6px 10px; gap: 10px; flex-wrap: wrap; font-size: 10px; }
+    .legend-hint { display: none; }
+    .legend-attribution { padding-left: 0; border-left: 0; }
+  }
 </style>
 </head>
 <body>
