@@ -5,6 +5,36 @@
   const DATA = window.ESC_DATA;
   const COUNTRIES_META = window.ESC_COUNTRIES;
 
+  // ---------- Viewed entries tracking ----------
+  const STORAGE_KEY = "esc-recap-viewed";
+  let viewedEntries = new Set();
+
+  function loadViewedEntries() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        viewedEntries = new Set(JSON.parse(stored));
+      }
+    } catch (e) {
+      // silently fail if localStorage is unavailable
+    }
+  }
+
+  function saveViewedEntries() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(viewedEntries)));
+    } catch (e) {
+      // silently fail if localStorage is unavailable
+    }
+  }
+
+  function markAsViewed(year, country) {
+    const key = year + "|" + country;
+    viewedEntries.add(key);
+    saveViewedEntries();
+    updateViewedUI();
+  }
+
   // ---------- Derived data ----------
   // unique years (asc) and countries (sorted by total entry count desc, ties alphabetical by code)
   const YEAR_MIN = Math.min(...window.ESC_DATA.map(r => r.year));
@@ -55,10 +85,6 @@
   // ---------- State ----------
   const state = {
     query: "",
-    yearMin: YEAR_MIN,
-    yearMax: YEAR_MAX,
-    countries: new Set(), // populated post-init with all
-    winnersOnly: false,
     sort: "placement", // "placement" | "alpha"
   };
 
@@ -70,22 +96,12 @@
   const searchWrap = document.getElementById("search-wrap");
   const searchClear = document.getElementById("search-clear");
   const searchResults = document.getElementById("search-results");
-  const winnersToggle = document.getElementById("winners-toggle");
-  const yearMinInput = document.getElementById("year-min");
-  const yearMaxInput = document.getElementById("year-max");
-  const yearFill = document.getElementById("year-fill");
-  const yearReadout = document.getElementById("year-readout");
-  const countryBtn = document.getElementById("country-btn");
-  const countryPanel = document.getElementById("country-panel");
-  const countryList = document.getElementById("country-list");
-  const countryFilter = document.getElementById("country-filter");
-  const countryBtnLabel = document.getElementById("country-btn-label");
-  const countryBtnBadge = document.getElementById("country-btn-badge");
   const statEntries = document.getElementById("stat-entries");
   const statCountries = document.getElementById("stat-countries");
   const statYears = document.getElementById("stat-years");
   const sortBtnPlace = document.getElementById("sort-place");
   const sortBtnAlpha = document.getElementById("sort-alpha");
+  const randomBtn = document.getElementById("random-btn");
 
   // modal
   const modal = document.getElementById("modal");
@@ -97,6 +113,14 @@
   const modalPlace = document.getElementById("modal-place");
   const modalTitle = document.getElementById("modal-title");
   const modalArtist = document.getElementById("modal-artist");
+  const navPrevYear = document.getElementById("nav-prev-year");
+  const navNextYear = document.getElementById("nav-next-year");
+  const navPrevPlace = document.getElementById("nav-prev-place");
+  const navNextPlace = document.getElementById("nav-next-place");
+  const navPrevYearText = document.getElementById("nav-prev-year-text");
+  const navNextYearText = document.getElementById("nav-next-year-text");
+  const navPrevPlaceText = document.getElementById("nav-prev-place-text");
+  const navNextPlaceText = document.getElementById("nav-next-place-text");
 
   // Pre-compute per-year ordering for placement mode.
   // For each year, build a sparse array indexed by (place - 1) -> country code.
@@ -218,45 +242,37 @@
   }
 
   // ---------- Filtering / search ----------
-  function applyFilters() {
+  function updateViewedUI() {
+    for (const cell of grid.querySelectorAll(".cell")) {
+      const y = +cell.dataset.year;
+      const cc = cell.dataset.country;
+      const key = y + "|" + cc;
+      cell.classList.toggle("viewed", viewedEntries.has(key));
+    }
+    updateStats();
+  }
+
+  function updateStats() {
     const q = state.query.trim().toLowerCase();
     const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
 
     let visibleEntries = 0;
+    let viewedCount = 0;
     let visibleCountries = new Set();
     let visibleYears = new Set();
-
-    // Update country header active state (only meaningful in alpha mode)
-    const activeCountries = state.countries;
-    for (const head of grid.querySelectorAll(".col-head")) {
-      const cc = head.dataset.country;
-      if (!cc) continue; // rank head, skip
-      head.dataset.active = activeCountries.has(cc) ? "true" : "false";
-      head.style.opacity = activeCountries.has(cc) ? "1" : "0.35";
-    }
-
-    // Update year row visibility
-    for (const rh of grid.querySelectorAll(".row-head")) {
-      const y = +rh.dataset.year;
-      const inRange = y >= state.yearMin && y <= state.yearMax;
-      rh.style.opacity = inRange ? "1" : "0.3";
-    }
 
     // Cells
     for (const cell of grid.querySelectorAll(".cell")) {
       const y = +cell.dataset.year;
       const cc = cell.dataset.country;
-      const inYearRange = y >= state.yearMin && y <= state.yearMax;
-      const countryOn = !cc || activeCountries.has(cc);
       const isEmpty = cell.classList.contains("empty");
-      const isWinner = cell.classList.contains("winner");
+      const isViewed = cell.classList.contains("viewed");
 
-      let pass = inYearRange && countryOn;
-      if (state.winnersOnly && !isWinner) pass = false;
+      let pass = !isEmpty;
 
       // search match
       let matches = false;
-      if (tokens.length && pass && !isEmpty && cc) {
+      if (tokens.length && pass && cc) {
         const haystack = [
           cell.dataset.title || "",
           cell.dataset.artist || "",
@@ -271,8 +287,9 @@
       cell.classList.toggle("dimmed", !pass);
       cell.classList.toggle("match", !!(tokens.length && matches));
 
-      if (pass && !isEmpty) {
+      if (pass) {
         visibleEntries++;
+        if (isViewed) viewedCount++;
         visibleCountries.add(cc);
         visibleYears.add(y);
       }
@@ -282,7 +299,28 @@
     statCountries.textContent = visibleCountries.size;
     statYears.textContent = visibleYears.size;
 
+    const statViewed = document.getElementById("stat-viewed");
+    if (statViewed) {
+      statViewed.textContent = viewedCount;
+    }
+
+    // Update mobile stats
+    const statEntriesMobile = document.getElementById("stat-entries-mobile");
+    const statCountriesMobile = document.getElementById("stat-countries-mobile");
+    const statYearsMobile = document.getElementById("stat-years-mobile");
+    const statViewedMobile = document.getElementById("stat-viewed-mobile");
+    if (statEntriesMobile) {
+      statEntriesMobile.textContent = visibleEntries.toLocaleString();
+      statCountriesMobile.textContent = visibleCountries.size;
+      statYearsMobile.textContent = visibleYears.size;
+      statViewedMobile.textContent = viewedCount;
+    }
+
     emptyState.style.display = visibleEntries === 0 ? "grid" : "none";
+  }
+
+  function applyFilters() {
+    updateStats();
   }
 
   // ---------- Modal ----------
@@ -357,6 +395,56 @@
       modalVideo.innerHTML = `<div class="modal-novideo">No video available for this entry.</div>`;
     }
 
+    // Update navigation buttons
+    const prevYearEntry = byYC.get((year - 1) + "|" + country);
+    const nextYearEntry = byYC.get((year + 1) + "|" + country);
+
+    if (prevYearEntry) {
+      navPrevYear.disabled = false;
+      navPrevYearText.innerHTML = `<span class="nav-entry-title">${escapeHtml(prevYearEntry.title)}</span><span class="nav-entry-meta">${year - 1}</span>`;
+    } else {
+      navPrevYear.disabled = true;
+      navPrevYearText.innerHTML = "";
+    }
+
+    if (nextYearEntry) {
+      navNextYear.disabled = false;
+      navNextYearText.innerHTML = `<span class="nav-entry-title">${escapeHtml(nextYearEntry.title)}</span><span class="nav-entry-meta">${year + 1}</span>`;
+    } else {
+      navNextYear.disabled = true;
+      navNextYearText.innerHTML = "";
+    }
+
+    const prevPlaceEntry = r.place != null && r.place > 1
+      ? DATA.find(e => e.year === year && e.place === r.place - 1)
+      : null;
+    const nextPlaceEntry = r.place != null
+      ? DATA.find(e => e.year === year && e.place === r.place + 1)
+      : null;
+
+    if (prevPlaceEntry) {
+      navPrevPlace.disabled = false;
+      const placeLabel = prevPlaceEntry.place === 1 ? "★ 1st" : `#${prevPlaceEntry.place}`;
+      navPrevPlace.title = prevPlaceEntry.country;
+      const prevMeta = COUNTRIES_META[prevPlaceEntry.country] || { name: prevPlaceEntry.country, flag: "🏳️" };
+      navPrevPlaceText.innerHTML = `<span class="nav-entry-title">${prevMeta.flag} ${escapeHtml(prevPlaceEntry.title)}</span><span class="nav-entry-meta">${placeLabel}</span>`;
+    } else {
+      navPrevPlace.disabled = true;
+      navPrevPlaceText.innerHTML = "";
+    }
+
+    if (nextPlaceEntry) {
+      navNextPlace.disabled = false;
+      const placeLabel = nextPlaceEntry.place === 1 ? "★ 1st" : `#${nextPlaceEntry.place}`;
+      navNextPlace.title = nextPlaceEntry.country;
+      const nextMeta = COUNTRIES_META[nextPlaceEntry.country] || { name: nextPlaceEntry.country, flag: "🏳️" };
+      navNextPlaceText.innerHTML = `<span class="nav-entry-title">${escapeHtml(nextPlaceEntry.title)} ${nextMeta.flag}</span><span class="nav-entry-meta">${placeLabel}</span>`;
+    } else {
+      navNextPlace.disabled = true;
+      navNextPlaceText.innerHTML = "";
+    }
+
+    markAsViewed(year, country);
     modal.classList.add("open");
   }
 
@@ -366,90 +454,6 @@
     modalVideo.innerHTML = "";
   }
 
-  // ---------- Country picker ----------
-  function renderCountryList(filter = "") {
-    const f = filter.trim().toLowerCase();
-    countryList.innerHTML = "";
-    const frag = document.createDocumentFragment();
-    for (const cc of allCountries) {
-      const meta = COUNTRIES_META[cc] || { name: cc, flag: "🏳️" };
-      if (f) {
-        const hay = (cc + " " + meta.name).toLowerCase();
-        if (!hay.includes(f)) continue;
-      }
-      const row = el("label", "country-row");
-      row.innerHTML = `
-        <input type="checkbox" ${state.countries.has(cc) ? "checked" : ""} data-cc="${cc}" />
-        <span class="flag">${meta.flag}</span>
-        <span class="name">${escapeHtml(meta.name)}</span>
-        <span class="code">${cc} · ${countryCounts[cc]}</span>
-      `;
-      const input = row.querySelector("input");
-      input.addEventListener("change", () => {
-        if (input.checked) state.countries.add(cc);
-        else state.countries.delete(cc);
-        updateCountryBtn();
-        applyFilters();
-      });
-      frag.appendChild(row);
-    }
-    countryList.appendChild(frag);
-  }
-
-  function updateCountryBtn() {
-    const total = allCountries.length;
-    const sel = state.countries.size;
-    if (sel === total) {
-      countryBtnLabel.textContent = "All countries";
-      countryBtnBadge.style.display = "none";
-      countryBtn.classList.remove("active");
-    } else if (sel === 0) {
-      countryBtnLabel.textContent = "No countries";
-      countryBtnBadge.style.display = "none";
-      countryBtn.classList.add("active");
-    } else {
-      countryBtnLabel.textContent = sel === 1 ? "1 country" : `${sel} countries`;
-      countryBtnBadge.textContent = sel;
-      countryBtnBadge.style.display = "";
-      countryBtn.classList.add("active");
-    }
-  }
-
-  // ---------- Year dual-range ----------
-  function setupYearRange() {
-    yearMinInput.min = String(YEAR_MIN);
-    yearMinInput.max = String(YEAR_MAX);
-    yearMinInput.value = String(YEAR_MIN);
-    yearMaxInput.min = String(YEAR_MIN);
-    yearMaxInput.max = String(YEAR_MAX);
-    yearMaxInput.value = String(YEAR_MAX);
-    updateYearRangeUI();
-  }
-
-  function updateYearRangeUI() {
-    const span = YEAR_MAX - YEAR_MIN;
-    const lo = (state.yearMin - YEAR_MIN) / span * 100;
-    const hi = (state.yearMax - YEAR_MIN) / span * 100;
-    yearFill.style.left = lo + "%";
-    yearFill.style.right = (100 - hi) + "%";
-    yearReadout.textContent = `${state.yearMin}–${state.yearMax}`;
-  }
-
-  function onYearInput() {
-    let lo = +yearMinInput.value;
-    let hi = +yearMaxInput.value;
-    if (lo > hi) {
-      // swap behavior: keep them at least 1 apart
-      if (event && event.target === yearMinInput) hi = lo;
-      else lo = hi;
-      yearMinInput.value = String(lo);
-      yearMaxInput.value = String(hi);
-    }
-    state.yearMin = lo;
-    state.yearMax = hi;
-    updateYearRangeUI();
-    applyFilters();
-  }
 
   // ---------- Helpers ----------
   function el(tag, cls) {
@@ -465,11 +469,9 @@
 
   // ---------- Wire up ----------
   function init() {
-    state.countries = new Set(allCountries);
+    loadViewedEntries();
     buildGrid();
-    setupYearRange();
-    renderCountryList();
-    updateCountryBtn();
+    updateViewedUI();
     applyFilters();
 
     // search
@@ -540,9 +542,6 @@
       const matches = [];
       for (const r of DATA) {
         if (r.country === "XX") continue;
-        if (r.year < state.yearMin || r.year > state.yearMax) continue;
-        if (!state.countries.has(r.country)) continue;
-        if (state.winnersOnly && r.place !== 1) continue;
         const meta = COUNTRIES_META[r.country] || { name: r.country };
         const hay = (r.title + " " + r.artist + " " + r.country + " " + meta.name + " " + r.year).toLowerCase();
         if (tokens.every(t => hay.includes(t))) matches.push(r);
@@ -632,52 +631,17 @@
       sortBtnPlace.setAttribute("aria-pressed", mode === "placement" ? "true" : "false");
       sortBtnAlpha.setAttribute("aria-pressed", mode === "alpha" ? "true" : "false");
       buildGrid();
-      renderCountryList(countryFilter.value);
       applyFilters();
     }
     sortBtnPlace.addEventListener("click", () => setSort("placement"));
     sortBtnAlpha.addEventListener("click", () => setSort("alpha"));
 
-    // year range
-    yearMinInput.addEventListener("input", onYearInput);
-    yearMaxInput.addEventListener("input", onYearInput);
-
-    // winners toggle
-    winnersToggle.addEventListener("click", () => {
-      state.winnersOnly = !state.winnersOnly;
-      winnersToggle.setAttribute("aria-pressed", state.winnersOnly ? "true" : "false");
-      applyFilters();
-    });
-
-    // country picker
-    countryBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const open = countryPanel.classList.toggle("open");
-      countryBtn.setAttribute("aria-expanded", open ? "true" : "false");
-      if (open) {
-        countryFilter.value = "";
-        renderCountryList();
-        setTimeout(() => countryFilter.focus(), 30);
-      }
-    });
-    document.addEventListener("click", (e) => {
-      if (!countryPanel.contains(e.target) && e.target !== countryBtn) {
-        countryPanel.classList.remove("open");
-        countryBtn.setAttribute("aria-expanded", "false");
-      }
-    });
-    countryFilter.addEventListener("input", () => renderCountryList(countryFilter.value));
-    document.getElementById("country-all").addEventListener("click", () => {
-      state.countries = new Set(allCountries);
-      renderCountryList(countryFilter.value);
-      updateCountryBtn();
-      applyFilters();
-    });
-    document.getElementById("country-none").addEventListener("click", () => {
-      state.countries = new Set();
-      renderCountryList(countryFilter.value);
-      updateCountryBtn();
-      applyFilters();
+    // random video
+    randomBtn.addEventListener("click", () => {
+      const validEntries = DATA.filter(r => r.country !== "XX" && r.videos && r.videos.length);
+      if (validEntries.length === 0) return;
+      const r = validEntries[Math.floor(Math.random() * validEntries.length)];
+      openModal(r.year, r.country);
     });
 
     // grid clicks → modal
@@ -691,14 +655,38 @@
     modalClose.addEventListener("click", closeModal);
     modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
+    // modal navigation
+    navPrevYear.addEventListener("click", () => {
+      const year = +modalYear.textContent;
+      const country = Object.keys(COUNTRIES_META).find(cc => COUNTRIES_META[cc].name === modalCountry.textContent);
+      if (country) openModal(year - 1, country);
+    });
+    navNextYear.addEventListener("click", () => {
+      const year = +modalYear.textContent;
+      const country = Object.keys(COUNTRIES_META).find(cc => COUNTRIES_META[cc].name === modalCountry.textContent);
+      if (country) openModal(year + 1, country);
+    });
+    navPrevPlace.addEventListener("click", () => {
+      const year = +modalYear.textContent;
+      const currentEntry = DATA.find(r => r.year === year && COUNTRIES_META[r.country]?.name === modalCountry.textContent);
+      if (currentEntry && currentEntry.place != null && currentEntry.place > 1) {
+        const prevEntry = DATA.find(e => e.year === year && e.place === currentEntry.place - 1);
+        if (prevEntry) openModal(year, prevEntry.country);
+      }
+    });
+    navNextPlace.addEventListener("click", () => {
+      const year = +modalYear.textContent;
+      const currentEntry = DATA.find(r => r.year === year && COUNTRIES_META[r.country]?.name === modalCountry.textContent);
+      if (currentEntry && currentEntry.place != null) {
+        const nextEntry = DATA.find(e => e.year === year && e.place === currentEntry.place + 1);
+        if (nextEntry) openModal(year, nextEntry.country);
+      }
+    });
+
     // keyboard
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         if (modal.classList.contains("open")) { closeModal(); return; }
-        if (countryPanel.classList.contains("open")) {
-          countryPanel.classList.remove("open");
-          countryBtn.setAttribute("aria-expanded", "false");
-        }
       }
       if (e.key === "/" && document.activeElement !== searchInput && document.activeElement !== countryFilter) {
         e.preventDefault();
@@ -712,16 +700,6 @@
       state.query = "";
       searchInput.value = "";
       searchWrap.classList.remove("has-value");
-      state.yearMin = YEAR_MIN;
-      state.yearMax = YEAR_MAX;
-      yearMinInput.value = String(YEAR_MIN);
-      yearMaxInput.value = String(YEAR_MAX);
-      updateYearRangeUI();
-      state.countries = new Set(allCountries);
-      renderCountryList();
-      updateCountryBtn();
-      state.winnersOnly = false;
-      winnersToggle.setAttribute("aria-pressed", "false");
       applyFilters();
     });
   }
