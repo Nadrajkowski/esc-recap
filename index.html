@@ -624,69 +624,89 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(14,18,38,0.72);
+    background: rgba(14,18,38,0.78);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 100;
     display: none;
     align-items: center;
     justify-content: center;
     padding: 24px;
-    animation: fade-in .15s ease;
+    animation: fade-in .18s ease;
   }
   .modal-backdrop.open { display: flex; }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
   .modal {
-    width: min(960px, 100%);
+    width: min(980px, 100%);
+    max-height: calc(100vh - 48px);
     background: var(--surface);
-    border-radius: 14px;
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
-    animation: pop-in .18s ease;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+    animation: pop-in .22s cubic-bezier(.2,.8,.2,1);
     display: flex;
     flex-direction: column;
   }
   @keyframes pop-in {
-    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
     to { opacity: 1; transform: none; }
   }
+
+  /* Header — flag block + titles + close */
   .modal-header {
-    padding: 16px 20px 14px;
-    border-bottom: 1px solid var(--line);
+    padding: 18px 20px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 16px;
+    background: linear-gradient(180deg, #fafaf6 0%, var(--surface) 100%);
+    border-bottom: 1px solid var(--line);
   }
   .modal-flag {
-    font-size: 36px;
+    font-size: 40px;
     line-height: 1;
-    margin-top: 2px;
+    flex: 0 0 auto;
+    width: 56px; height: 56px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
   }
   .modal-titles {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
   }
   .modal-meta {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 10px;
     color: var(--ink-3);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     margin-bottom: 4px;
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    align-items: center;
     flex-wrap: wrap;
   }
   .modal-meta .pill {
-    background: var(--bg-grid);
     color: var(--ink-2);
-    padding: 2px 8px;
-    border-radius: 999px;
-    letter-spacing: 0.06em;
+    padding: 0;
+    background: transparent;
+    font-weight: 500;
+  }
+  .modal-meta .pill + .pill::before {
+    content: "";
+    display: inline-block;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--line-strong);
+    margin-right: 8px;
+    vertical-align: middle;
   }
   .modal-meta .pill.winner {
-    background: var(--eu-gold);
-    color: var(--ink);
-    font-weight: 600;
+    color: var(--eu-gold-deep);
+    font-weight: 700;
   }
   .modal-title {
     font-size: 22px;
@@ -694,22 +714,32 @@
     line-height: 1.2;
     color: var(--ink);
     margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .modal-artist {
     font-size: 14px;
     color: var(--ink-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .modal-close {
     border: 0;
-    background: var(--bg-grid);
-    width: 32px; height: 32px;
-    border-radius: 8px;
+    background: transparent;
+    width: 36px; height: 36px;
+    border-radius: 10px;
     cursor: pointer;
-    color: var(--ink-2);
+    color: var(--ink-3);
     display: grid;
     place-items: center;
+    flex: 0 0 auto;
+    transition: all .15s;
+    align-self: flex-start;
   }
-  .modal-close:hover { background: var(--ink); color: var(--surface); }
+  .modal-close:hover { background: var(--bg-grid); color: var(--ink); }
+  .modal-close:active { transform: scale(0.94); }
 
   .modal-video {
     aspect-ratio: 16 / 9;
@@ -766,72 +796,148 @@
   }
 
   .modal-nav {
-    padding: 16px 20px;
+    padding: 14px 20px 18px;
     border-top: 1px solid var(--line);
-    background: var(--surface);
-    display: flex;
-    gap: 16px;
+    background: var(--bg);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
   }
   .modal-nav-group {
-    flex: 1 1 50%;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-width: 0;
   }
   .modal-nav-label {
     font-family: var(--font-mono);
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     color: var(--ink-3);
+    padding: 0 2px;
   }
   .modal-nav-links {
-    display: flex;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
   .modal-nav-btn {
     border: 1px solid var(--line);
-    background: var(--bg);
-    padding: 12px 16px;
-    border-radius: 6px;
+    background: var(--surface);
+    padding: 10px 12px;
+    border-radius: 10px;
     font: inherit;
     font-size: 12px;
     color: var(--ink-2);
     cursor: pointer;
-    transition: all .12s;
+    transition: all .15s ease;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    flex: 1 1 25%;
-    min-height: 64px;
+    gap: 10px;
+    min-height: 56px;
+    text-align: left;
+    min-width: 0;
+    position: relative;
   }
+  .modal-nav-btn .nav-arrow {
+    flex: 0 0 auto;
+    width: 24px; height: 24px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-3);
+    transition: transform .15s, color .15s;
+  }
+  .modal-nav-btn[data-dir="next"] { flex-direction: row-reverse; text-align: right; }
+  .modal-nav-btn[data-dir="next"] .nav-content { align-items: flex-end; }
   .modal-nav-btn:hover:not(:disabled) {
-    border-color: var(--line-strong);
+    border-color: var(--eu-blue);
     background: var(--surface);
     color: var(--ink);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,51,153,0.08);
   }
+  .modal-nav-btn:hover:not(:disabled) .nav-arrow { color: var(--eu-blue); }
+  .modal-nav-btn[data-dir="prev"]:hover:not(:disabled) .nav-arrow { transform: translateX(-2px); }
+  .modal-nav-btn[data-dir="next"]:hover:not(:disabled) .nav-arrow { transform: translateX(2px); }
+  .modal-nav-btn:active:not(:disabled) { transform: translateY(0); }
   .modal-nav-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
+    background: transparent;
   }
+
+  /* Random button — full-width row inside modal-nav */
+  .modal-random-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-random-row::before,
+  .modal-random-row::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+  .modal-random-btn {
+    flex: 0 0 auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: all .15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.02em;
+  }
+  .modal-random-btn .dice {
+    font-size: 16px;
+    line-height: 1;
+    display: inline-block;
+    transition: transform .35s cubic-bezier(.5,1.5,.5,1);
+  }
+  .modal-random-btn:hover {
+    border-color: var(--eu-blue);
+    color: var(--eu-blue);
+    background: var(--surface);
+    box-shadow: 0 2px 10px rgba(0,51,153,0.1);
+  }
+  .modal-random-btn:hover .dice { transform: rotate(-18deg) scale(1.1); }
+  .modal-random-btn:active { transform: scale(0.97); }
   .modal-nav-btn .nav-content {
-    text-align: center;
-    line-height: 1.4;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.3;
+    text-align: left;
   }
   .nav-entry-title {
     display: block;
     font-weight: 600;
-    font-size: 11px;
+    font-size: 12px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     width: 100%;
+    color: var(--ink);
   }
   .nav-entry-meta {
     display: block;
     font-size: 10px;
-    opacity: 0.7;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
   }
 
   /* legend strip */
@@ -929,17 +1035,23 @@
 
     .row-head { padding: 0 6px; font-size: 11px; }
 
-    .modal-backdrop { padding: 0; }
-    .modal { border-radius: 0; height: 100%; width: 100%; }
-    .modal-header { padding: 12px 14px 10px; gap: 10px; }
-    .modal-flag { font-size: 28px; }
-    .modal-title { font-size: 18px; }
-    .modal-nav { padding: 12px 14px; gap: 10px; flex-direction: column; }
-    .modal-nav-group { gap: 8px; }
-    .modal-nav-links { gap: 8px; width: 100%; }
-    .modal-nav-btn { padding: 10px 12px; font-size: 11px; min-height: 48px; flex: 1 1 calc(50% - 4px); }
-    .nav-entry-title { font-size: 10px; }
-    .nav-entry-meta { font-size: 9px; }
+    .modal-backdrop { padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .modal { border-radius: 0; height: 100%; width: 100%; max-height: 100vh; }
+    .modal-header { padding: 12px 14px; gap: 12px; background: var(--surface); }
+    .modal-flag { font-size: 30px; width: 48px; height: 48px; border-radius: 10px; }
+    .modal-title { font-size: 17px; }
+    .modal-artist { font-size: 13px; }
+    .modal-close { width: 40px; height: 40px; }
+    .modal-nav {
+      padding: 12px 12px 16px;
+      gap: 12px;
+      grid-template-columns: 1fr;
+    }
+    .modal-nav-links { gap: 6px; }
+    .modal-nav-btn { padding: 10px 10px; min-height: 52px; gap: 8px; border-radius: 10px; }
+    .modal-nav-btn .nav-arrow { width: 20px; height: 20px; }
+    .nav-entry-title { font-size: 12px; }
+    .nav-entry-meta { font-size: 10px; }
 
     .legend { padding: 6px 10px; gap: 10px; flex-wrap: wrap; font-size: 10px; }
     .legend-hint { display: none; }
@@ -998,9 +1110,9 @@
     </div>
 
     <div class="filter-group">
-      <button class="toggle" id="random-btn">
-        <span style="font-size: 16px;">🎲</span>
-        Random
+      <button class="modal-random-btn toolbar-random" id="random-btn" type="button" title="Jump to a random entry">
+        <span class="dice" aria-hidden="true">🎲</span>
+        <span>Surprise me</span>
       </button>
     </div>
   </div>
@@ -1065,26 +1177,36 @@
     <div class="modal-video" id="modal-video"></div>
     <div class="modal-nav" id="modal-nav">
       <div class="modal-nav-group">
-        <div class="modal-nav-label">Same country in different years</div>
+        <div class="modal-nav-label">Same country, other years</div>
         <div class="modal-nav-links">
-          <button class="modal-nav-btn" id="nav-prev-year" title="Previous year">
+          <button class="modal-nav-btn" data-dir="prev" id="nav-prev-year" title="Previous year">
+            <span class="nav-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></span>
             <span class="nav-content" id="nav-prev-year-text"></span>
           </button>
-          <button class="modal-nav-btn" id="nav-next-year" title="Next year">
+          <button class="modal-nav-btn" data-dir="next" id="nav-next-year" title="Next year">
+            <span class="nav-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
             <span class="nav-content" id="nav-next-year-text"></span>
           </button>
         </div>
       </div>
       <div class="modal-nav-group">
-        <div class="modal-nav-label">Different placements in same year</div>
+        <div class="modal-nav-label">Same year, other placements</div>
         <div class="modal-nav-links">
-          <button class="modal-nav-btn" id="nav-prev-place" title="Better placement">
+          <button class="modal-nav-btn" data-dir="prev" id="nav-prev-place" title="Better placement">
+            <span class="nav-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></span>
             <span class="nav-content" id="nav-prev-place-text"></span>
           </button>
-          <button class="modal-nav-btn" id="nav-next-place" title="Worse placement">
+          <button class="modal-nav-btn" data-dir="next" id="nav-next-place" title="Worse placement">
+            <span class="nav-arrow" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
             <span class="nav-content" id="nav-next-place-text"></span>
           </button>
         </div>
+      </div>
+      <div class="modal-random-row">
+        <button class="modal-random-btn" id="modal-random-btn" type="button" title="Jump to a random entry">
+          <span class="dice" aria-hidden="true">🎲</span>
+          <span>Surprise me</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1092,5 +1214,6 @@
 
 <script src="data.js"></script>
 <script src="esc-app.js"></script>
+<script src="modal-extras.js"></script>
 </body>
 </html>

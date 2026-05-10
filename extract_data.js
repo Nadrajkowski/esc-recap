@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Run: node extract_data.js > data_generated.js
+// Run: node extract_data.js > data.js
 // Extracts ESC senior contest data from the dataset folder into the data.js format.
-// Fields: year, country, artist, title, place, youtube (ID only)
+// Fields: year, country, artist, title, place, round, videos, votes, lyrics
 
 const fs = require("fs");
 const path = require("path");
@@ -13,6 +13,77 @@ function extractYoutubeId(url) {
   if (!url) return "";
   const match = url.match(/embed\/([a-zA-Z0-9_-]+)/);
   return match ? match[1] : "";
+}
+
+function extractLyrics(lyricsDir) {
+  // Read all lyric files from the directory
+  // Format: o_LANGUAGE.txt for original, t_LANGUAGE.txt for translations
+  const files = fs.readdirSync(lyricsDir).filter(f => f.endsWith(".txt"));
+  if (!files.length) return null;
+
+  let original = null;
+  const translations = [];
+
+  for (const file of files) {
+    const content = fs.readFileSync(path.join(lyricsDir, file), "utf8");
+    const isOriginal = file.startsWith("o_");
+    const langMatch = file.replace(/^[ot]_/, "").replace(".txt", "");
+
+    // Determine language label
+    const langMap = {
+      english: "English",
+      albanian: "Albanian",
+      arabic: "Arabic",
+      armenian: "Armenian",
+      azerbaijani: "Azerbaijani",
+      catalan: "Catalan",
+      croatian: "Croatian",
+      czech: "Czech",
+      danish: "Danish",
+      dutch: "Dutch",
+      finnish: "Finnish",
+      french: "Français",
+      german: "Deutsch",
+      greek: "Greek",
+      hebrew: "Hebrew",
+      indonesian: "Indonesian",
+      irish: "Irish",
+      italian: "Italiano",
+      latin: "Latin",
+      latvian: "Latvian",
+      lithuanian: "Lithuanian",
+      maltese: "Maltese",
+      norwegian: "Norwegian",
+      polish: "Polski",
+      portuguese: "Português",
+      romanian: "Romanian",
+      romansh: "Romansh",
+      russian: "Russian",
+      serbian: "Serbian",
+      spanish: "Español",
+      swedish: "Svenska",
+      "swiss german": "Schweizerdeutsch",
+      turkish: "Turkish",
+      ukrainian: "Ukrainian",
+      welsh: "Welsh"
+    };
+
+    const label = langMap[langMatch.toLowerCase()] || langMatch;
+    const lyricObj = { lang: langMatch, label, text: content };
+
+    if (isOriginal) {
+      original = { ...lyricObj, label: `${label} (original)` };
+    } else {
+      translations.push(lyricObj);
+    }
+  }
+
+  if (!original && translations.length === 0) return null;
+
+  return {
+    original: original || (translations.length > 0 ? translations[0] : null),
+    translations: original ? translations : translations.slice(1)
+  };
 }
 
 const years = fs
@@ -32,29 +103,49 @@ for (const year of years) {
 
   const final = JSON.parse(fs.readFileSync(finalPath, "utf8"));
 
-  // Build place lookup: contestantId -> place
+  // Build place lookup and final scores
   const placeLookup = {};
+  const scoresLookup = {};
   for (const perf of final.performances || []) {
     placeLookup[perf.contestantId] = perf.place ?? null;
+    if (perf.scores) {
+      scoresLookup[perf.contestantId] = perf.scores;
+    }
   }
 
-  // Build round lookup: contestantId -> "sf" | "sf1" | "sf2" (null = no semis that year)
+  // Build round lookup
   const roundLookup = {};
   const roundsDir = path.join(yearDir, "rounds");
   const sf1Path = path.join(roundsDir, "semifinal1.json");
   const sf2Path = path.join(roundsDir, "semifinal2.json");
   const sfPath = path.join(roundsDir, "semifinal.json");
+
   if (fs.existsSync(sf1Path)) {
-    for (const perf of (JSON.parse(fs.readFileSync(sf1Path, "utf8")).performances || []))
+    for (const perf of (JSON.parse(fs.readFileSync(sf1Path, "utf8")).performances || [])) {
       roundLookup[perf.contestantId] = "sf1";
+      // Only store SF scores if not in final (don't overwrite final scores)
+      if (perf.scores && !(perf.contestantId in placeLookup)) {
+        scoresLookup[perf.contestantId] = perf.scores;
+      }
+    }
   }
   if (fs.existsSync(sf2Path)) {
-    for (const perf of (JSON.parse(fs.readFileSync(sf2Path, "utf8")).performances || []))
+    for (const perf of (JSON.parse(fs.readFileSync(sf2Path, "utf8")).performances || [])) {
       roundLookup[perf.contestantId] = "sf2";
+      // Only store SF scores if not in final (don't overwrite final scores)
+      if (perf.scores && !(perf.contestantId in placeLookup)) {
+        scoresLookup[perf.contestantId] = perf.scores;
+      }
+    }
   }
   if (fs.existsSync(sfPath)) {
-    for (const perf of (JSON.parse(fs.readFileSync(sfPath, "utf8")).performances || []))
+    for (const perf of (JSON.parse(fs.readFileSync(sfPath, "utf8")).performances || [])) {
       roundLookup[perf.contestantId] = "sf";
+      // Only store SF scores if not in final (don't overwrite final scores)
+      if (perf.scores && !(perf.contestantId in placeLookup)) {
+        scoresLookup[perf.contestantId] = perf.scores;
+      }
+    }
   }
 
   // Read each contestant folder
@@ -74,7 +165,17 @@ for (const year of years) {
     const inFinal = c.id in placeLookup;
     const round = inFinal ? "final" : (roundLookup[c.id] ?? null);
 
-    entries.push({ year, country: c.country, artist: c.artist, title: c.song, place, round, videos });
+    // Scoring data: store all three breakdowns (total, jury, public)
+    const scores = scoresLookup[c.id] || null;
+
+    // Lyrics: read from lyrics directory if available
+    const lyricsDir = path.join(contestantsDir, folder, "lyrics");
+    let lyricsData = null;
+    if (fs.existsSync(lyricsDir)) {
+      lyricsData = extractLyrics(lyricsDir);
+    }
+
+    entries.push({ year, country: c.country, artist: c.artist, title: c.song, place, round, videos, scores, lyrics: lyricsData });
   }
 }
 
@@ -90,8 +191,10 @@ for (const e of entries) {
   const place = e.place === null ? "null" : e.place;
   const round = e.round === null ? "null" : `"${e.round}"`;
   const videos = JSON.stringify(e.videos);
+  const scores = e.scores ? JSON.stringify(e.scores) : "null";
+  const lyricsStr = e.lyrics ? JSON.stringify(e.lyrics) : "null";
   lines.push(
-    `  { year: ${e.year}, country: "${e.country}", artist: ${JSON.stringify(e.artist)}, title: ${JSON.stringify(e.title)}, place: ${place}, round: ${round}, videos: ${videos} },`
+    `  { year: ${e.year}, country: "${e.country}", artist: ${JSON.stringify(e.artist)}, title: ${JSON.stringify(e.title)}, place: ${place}, round: ${round}, videos: ${videos}, scores: ${scores}, lyrics: ${lyricsStr} },`
   );
 }
 
@@ -115,7 +218,7 @@ for (const code of [...usedCountries].sort()) {
 }
 
 console.log(`// Auto-generated by extract_data.js — do not edit manually.`);
-console.log(`// Fields: year, country, artist, title, place, youtube`);
+console.log(`// Fields: year, country, artist, title, place, round, videos, scores, lyrics`);
 console.log(``);
 console.log(`window.ESC_COUNTRIES = {`);
 console.log(countryLines.join("\n"));

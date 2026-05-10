@@ -637,12 +637,15 @@
     sortBtnAlpha.addEventListener("click", () => setSort("alpha"));
 
     // random video
-    randomBtn.addEventListener("click", () => {
+    const goRandom = () => {
       const validEntries = DATA.filter(r => r.country !== "XX" && r.videos && r.videos.length);
       if (validEntries.length === 0) return;
       const r = validEntries[Math.floor(Math.random() * validEntries.length)];
       openModal(r.year, r.country);
-    });
+    };
+    randomBtn.addEventListener("click", goRandom);
+    const modalRandomBtn = document.getElementById("modal-random-btn");
+    if (modalRandomBtn) modalRandomBtn.addEventListener("click", goRandom);
 
     // grid clicks → modal
     grid.addEventListener("click", (e) => {
