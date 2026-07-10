@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout source (main)
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -29,14 +31,51 @@ jobs:
         run: |
           node extract_data.js > data.js
 
+      - name: Validate generated data
+        run: |
+          lines=$(wc -l < data.js)
+          echo "data.js has $lines lines"
+          grep -q 'ESC_DATA' data.js || { echo "ERROR: ESC_DATA not found in data.js"; exit 1; }
+          grep -q 'ESC_COUNTRIES' data.js || { echo "ERROR: ESC_COUNTRIES not found in data.js"; exit 1; }
+          count=$(grep -c '{ year:' data.js)
+          echo "Found $count country entries"
+          [ "$count" -gt 0 ] || { echo "ERROR: No data entries generated"; exit 1; }
+
+      - name: Serve and verify generated page
+        run: |
+          # Start a simple HTTP server in the background
+          python3 -m http.server 8888 &
+          SERVER_PID=$!
+          # Wait for the server to be ready
+          for i in $(seq 1 10); do
+            curl -s http://localhost:8080/ > /dev/null 2>&1 && break
+            sleep 1
+          done
+          # Fetch the page and verify it
+          PAGE=$(curl -s http://localhost:8080/)
+          echo "Page size: $(echo "$PAGE" | wc -c) bytes"
+          echo "$PAGE" | grep -q '<script src="data.js"></script>' || { echo "ERROR: data.js not referenced"; exit 1; }
+          echo "$PAGE" | grep -q 'ESC_DATA' || { echo "ERROR: ESC_DATA not found in page"; exit 1; }
+          # Verify data.js is valid JS (has expected exports)
+          grep -q 'window.ESC_DATA' data.js || { echo "ERROR: ESC_DATA not exported in data.js"; exit 1; }
+          grep -q 'window.ESC_COUNTRIES' data.js || { echo "ERROR: ESC_COUNTRIES not exported in data.js"; exit 1; }
+          kill $SERVER_PID 2>/dev/null
+          echo "Page verification passed"
+
+      - name: Clean up dataset
+        run: |
+          rm -rf dataset
+
       - name: Deploy to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Create or update gh-pages branch from current main commit
+          # Create orphan gh-pages branch from current main commit
           git checkout --orphan gh-pages
-          git rm -rf --cached . 2>/dev/null || true
+          git rm -rf --cached .
           git add index.html esc-app.js modal-extras.js run-server.sh LICENSE .github
           git add data.js
           git commit -m "deploy: $(date +%Y-%m-%d) — ESC data refreshed"

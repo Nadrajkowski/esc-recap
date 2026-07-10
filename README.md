@@ -53,6 +53,31 @@ Includes:
 - Original lyrics and translations (where available)
 - Video links for each performance
 
+## Local development
+
+The app is a static site — no build step required.
+
+**Run locally:**
+
+```bash
+python3 -m http.server 8888
+# then open http://localhost:8888
+```
+
+**Regenerate data.js:**
+
+```bash
+git clone --depth 1 https://github.com/EurovisionAPI/dataset.git dataset
+node extract_data.js > data.js
+rm -rf dataset
+```
+
+**Test the GitHub Actions workflow locally** (requires [act](https://nektosact.com/)):
+
+```bash
+act -n -W .github/workflows/refresh-data.yml workflow_dispatch
+```
+
 ## Changelog
 
 ### v1.0.1 (May 2026)
