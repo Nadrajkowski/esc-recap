@@ -6,8 +6,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const DATASET_DIR = path.join(__dirname, "../dataset/data/senior");
-const COUNTRIES_FILE = path.join(__dirname, "../dataset/data/countries.json");
+const DATASET_DIR = path.join(__dirname, "dataset/data/senior");
+const COUNTRIES_FILE = path.join(__dirname, "dataset/data/countries.json");
 
 function extractYoutubeId(url) {
   if (!url) return "";
