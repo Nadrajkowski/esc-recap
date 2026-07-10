@@ -1,0 +1,45 @@
+name: Refresh ESC Data
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source (main)
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Clone Eurovision dataset
+        run: |
+          git clone --depth 1 https://github.com/EurovisionAPI/dataset.git dataset
+
+      - name: Generate data.js
+        run: |
+          node extract_data.js > data.js
+
+      - name: Deploy to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create or update gh-pages branch from current main commit
+          git checkout --orphan gh-pages
+          git rm -rf --cached . 2>/dev/null || true
+          git add index.html esc-app.js modal-extras.js run-server.sh LICENSE .github
+          git add data.js
+          git commit -m "deploy: $(date +%Y-%m-%d) — ESC data refreshed"
+
+          # Push to gh-pages (force to keep it in sync)
+          git push origin gh-pages --force
