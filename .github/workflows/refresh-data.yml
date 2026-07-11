@@ -7,16 +7,26 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, don't cancel in-progress runs
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout source (main)
+      - name: Checkout source (lmstudio)
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          ref: lmstudio
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -41,43 +51,18 @@ jobs:
           echo "Found $count country entries"
           [ "$count" -gt 0 ] || { echo "ERROR: No data entries generated"; exit 1; }
 
-      - name: Serve and verify generated page
+      - name: Assemble site directory
         run: |
-          # Start a simple HTTP server in the background
-          python3 -m http.server 8888 &
-          SERVER_PID=$!
-          # Wait for the server to be ready
-          for i in $(seq 1 10); do
-            curl -s http://localhost:8888/ > /dev/null 2>&1 && break
-            sleep 1
-          done
-          # Fetch the page and verify it
-          PAGE=$(curl -s http://localhost:8888/)
-          echo "Page size: $(echo "$PAGE" | wc -c) bytes"
-          echo "$PAGE" | grep -q '<script src="data.js"></script>' || { echo "ERROR: data.js not referenced"; exit 1; }
-          # Verify data.js is valid JS (has expected exports)
-          grep -q 'window.ESC_DATA' data.js || { echo "ERROR: ESC_DATA not exported in data.js"; exit 1; }
-          grep -q 'window.ESC_COUNTRIES' data.js || { echo "ERROR: ESC_COUNTRIES not exported in data.js"; exit 1; }
-          kill $SERVER_PID 2>/dev/null
-          echo "Page verification passed"
+          mkdir -p _site
+          cp index.html esc-app.js modal-extras.js data.js _site/
+          echo "Site contents:"
+          ls -la _site
 
-      - name: Clean up dataset
-        run: |
-          rm -rf dataset
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
 
-      - name: Deploy to gh-pages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Create orphan gh-pages branch from current main commit
-          git checkout --orphan gh-pages
-          git rm -rf --cached .
-          git add index.html esc-app.js modal-extras.js LICENSE
-          git add -f data.js
-          git commit -m "deploy: $(date +%Y-%m-%d) — ESC data refreshed"
-
-          # Push to gh-pages (force to keep it in sync)
-          git push origin gh-pages --force
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
