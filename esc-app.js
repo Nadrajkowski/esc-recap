@@ -695,7 +695,7 @@
       if (e.key === "Escape") {
         if (modal.classList.contains("open")) { closeModal(); return; }
       }
-      if (e.key === "/" && document.activeElement !== searchInput && document.activeElement !== countryFilter) {
+      if (e.key === "/" && document.activeElement !== searchInput) {
         e.preventDefault();
         searchInput.focus();
         searchInput.select();
