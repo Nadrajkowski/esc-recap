@@ -1,5 +1,6 @@
 # ESC Recap
 
+
 ![Desktop version of the app](image-1.png)
 
 ![Mobile version of the app](image.png)
