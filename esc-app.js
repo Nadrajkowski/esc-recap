@@ -469,6 +469,10 @@
 
   // ---------- Wire up ----------
   function init() {
+    // dynamic title from data year range
+    const sub = document.getElementById("brand-sub");
+    sub.textContent = `Eurovision performances · ${YEAR_MIN} → ${YEAR_MAX}`;
+
     loadViewedEntries();
     buildGrid();
     updateViewedUI();
