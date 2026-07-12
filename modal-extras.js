@@ -396,6 +396,7 @@
     const max = entries[0][1];
     const showStack = voteState.src === "total" && currentExtras &&
       ((voteState.dir === "received" && currentExtras.scores) || (voteState.dir === "given" && currentExtras.given));
+    const publicOnly = voteState.src === "public";
     const juryArr = currentExtras && (voteState.dir === "received" ? currentExtras.scores : currentExtras.given);
     const juryV = juryArr ? (juryArr.find(s => s.name === "jury") || {}).votes || {} : {};
     const pubV = juryArr ? (juryArr.find(s => s.name === "public") || {}).votes || {} : {};
@@ -416,7 +417,7 @@
             <div class="vote-bar-segs">
               ${showStack
                 ? `<div class="vote-bar-seg-jury" style="width:${jPct}%"></div><div class="vote-bar-seg-public" style="width:${pPct}%"></div>`
-                : `<div class="vote-bar-seg-flat" style="width:${flatPct}%"></div>`}
+                : publicOnly ? `<div class="vote-bar-seg-public" style="width:${flatPct}%"></div>` : `<div class="vote-bar-seg-flat" style="width:${flatPct}%"></div>`}
             </div>
           </div>
           <span class="vote-bar-points">${pts}</span>
