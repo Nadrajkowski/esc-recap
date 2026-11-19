@@ -1,5 +1,7 @@
 # ESC Recap
 
+https://nadrajkowski.github.io/esc-recap/
+
 ![Desktop version of the app](image-1.png)
 
 ![Mobile version of the app](image.png)
